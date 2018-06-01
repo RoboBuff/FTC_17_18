@@ -1,0 +1,86 @@
+package org.firstinspires.ftc.teamcode;
+
+import com.qualcomm.robotcore.eventloop.opmode.OpMode;
+import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
+import com.qualcomm.robotcore.hardware.DcMotor;
+import com.qualcomm.robotcore.hardware.DcMotorSimple;
+import com.qualcomm.robotcore.hardware.Servo;
+import com.qualcomm.robotcore.util.Range;
+
+import org.firstinspires.ftc.robotcontroller.external.samples.HardwarePushbot;
+
+/**
+ * Created by Galaxy on 9/15/2017.
+ */
+@TeleOp(group = "SecProject", name = "Main Code")
+public class MainTeleOp extends OpMode{
+
+    MyHardwareCode Myrobot = new MyHardwareCode(); // use the class created to define a Pushbot's hardware
+
+    double Left;                        //variables that will later apply to the joysticks on the
+    double Right;
+
+    double LeftController;
+
+    public final static double RclawClose = 0.7;
+    public final static double LclawClose = 0.3;
+    public final static double RclawOpen = 0.0;
+    public final static double LclawOpen = 1.0;
+
+    @Override
+    public void init() {
+
+        Myrobot.init(hardwareMap);
+
+    }
+
+    @Override
+    public void loop() {
+        Right = gamepad1.right_stick_y;           //Reference variables above motor declaration
+        Left = gamepad1.left_stick_y;              //This is assigning the variables to the joysticks
+
+        LeftController = -gamepad2.left_stick_y;
+        Range.clip(LeftController, -0.70, 0.70);
+
+        Myrobot.RightMotor.setPower(Right);             //Giving the value to the motors
+        Myrobot.LeftMotor.setPower(Left);
+
+        Myrobot.LiftMotor.setPower(LeftController);
+        Myrobot.LiftMotor2.setPower(LeftController);
+
+        ClawLift();
+
+        ClawControl();
+
+        debug();
+
+    }
+
+
+    private void ClawLift(){
+        if(gamepad2.a){
+            Myrobot.LiftMotor.setPower(.65);      //Basic if/else statement
+            Myrobot.LiftMotor2.setPower(.65);     //giving power the arm motors
+        }else{
+            Myrobot.LiftMotor.setPower(0);
+            Myrobot.LiftMotor2.setPower(0);
+        }
+    }
+
+    private void ClawControl(){
+        if (gamepad2.right_bumper) {
+            Myrobot.RightTooth.setPosition(RclawClose);
+            Myrobot.LeftTooth.setPosition(LclawClose);
+        }
+        else{
+            Myrobot.RightTooth.setPosition(RclawOpen);
+            Myrobot.LeftTooth.setPosition(LclawOpen);
+        }
+    }
+
+    private void debug(){
+        telemetry.addData("Power", Myrobot.RightMotor.getPower());
+        telemetry.addData("Power", Myrobot.LeftMotor.getPower());
+    }
+
+}
