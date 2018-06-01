@@ -1,3 +1,5 @@
 # FTC_17_18
 
-Code that use for FTc
+Code that use for FTC
+
+All the code here was adapted to the hardware code... 
