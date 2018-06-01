@@ -1,0 +1,266 @@
+package org.firstinspires.ftc.teamcode;
+
+import com.qualcomm.hardware.modernrobotics.ModernRoboticsI2cGyro;
+import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
+import com.qualcomm.robotcore.hardware.DcMotor;
+import com.qualcomm.robotcore.util.ElapsedTime;
+import com.qualcomm.robotcore.util.Range;
+
+/**
+ * Created by Galaxy on 1/20/2018.
+ */
+
+public class DriveByGyro extends LinearOpMode {
+
+    MyHardwareCode MyRobot = new MyHardwareCode();
+
+    ModernRoboticsI2cGyro gyro = null;
+
+    static final double Counts_Per_Motor_Rev = 1680;
+    static final double Drive_Gear_Reduction = 2.0;
+    static final double Wheel_Diameter_Inches = 4.0;
+    static final double Counts_Per_Inch = (Counts_Per_Motor_Rev * Drive_Gear_Reduction) / (Wheel_Diameter_Inches * 3.1415);
+
+    static final double DRIVE_SPEED = 1.0;
+    static final double TURN_SPEED = 0.5;
+
+    static final double Heading_Threshhold = 1;
+    static final double P_Turn_Coeff = 0.1;
+    static final double P_Drive_Coeff = 0.15;
+ 
+    @Override
+    public void runOpMode() throws InterruptedException {
+
+        MyRobot.init(hardwareMap);
+        gyro = (ModernRoboticsI2cGyro) hardwareMap.gyroSensor.get("gyro");
+
+        MyRobot.LeftMotor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        MyRobot.RightMotor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+
+        telemetry.addData(">", "Calibrating Gyro");
+        telemetry.update();
+
+        gyro.calibrate();
+
+        while (!isStopRequested() && gyro.isCalibrating()) {
+            sleep(50);
+            idle();
+        }
+
+        telemetry.addData(">", "Robot is Ready");
+        telemetry.update();
+
+        MyRobot.LeftMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        MyRobot.RightMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+
+        while (!isStarted()) {
+            telemetry.addData(">", "Robot is heading = &d", gyro.getIntegratedZValue());
+            telemetry.update();
+        }
+
+        gyro.resetZAxisIntegrator();
+
+        gyroDrive(DRIVE_SPEED, 48.0, 0.0);    // Drive FWD 48 inches
+        gyroTurn( TURN_SPEED, -45.0);         // Turn  CCW to -45 Degrees
+        gyroHold( TURN_SPEED, -45.0, 0.5);    // Hold -45 Deg heading for a 1/2 second
+        gyroDrive(DRIVE_SPEED, 12.0, -45.0);  // Drive FWD 12 inches at 45 degrees
+        gyroTurn( TURN_SPEED,  45.0);         // Turn  CW  to  45 Degrees
+        gyroHold( TURN_SPEED,  45.0, 0.5);    // Hold  45 Deg heading for a 1/2 second
+        gyroTurn( TURN_SPEED,   0.0);         // Turn  CW  to   0 Degrees
+        gyroHold( TURN_SPEED,   0.0, 1.0);    // Hold  0 Deg heading for a 1 second
+        gyroDrive(DRIVE_SPEED,-48.0, 0.0);    // Drive REV 48 inches
+
+    }
+
+    /**
+     *  Method to drive on a fixed compass bearing (angle), based on encoder counts.
+     *  Move will stop if either of these conditions occur:
+     *  1) Move gets to the desired position
+     *  2) Driver stops the opmode running.
+     *
+     * @param speed      Target speed for forward motion.  Should allow for _/- variance for adjusting heading
+     * @param distance   Distance (in inches) to move from current position.  Negative distance means move backwards.
+     * @param angle      Absolute Angle (in Degrees) relative to last gyro reset.
+     *                   0 = fwd. +ve is CCW from fwd. -ve is CW from forward.
+     *                   If a relative angle is required, add/subtract from current heading.
+     */
+    public void gyroDrive(double speed,
+                          double distance,
+                          double angle) {
+
+        int newLeftTarget;
+        int newRightTarget;
+        int moveCounts;
+        double max;
+        double error;
+        double steer;
+        double leftSpeed;
+        double rightSpeed;
+
+        if (opModeIsActive()) {
+
+            moveCounts = (int) (distance * Counts_Per_Inch);
+            newLeftTarget = MyRobot.LeftMotor.getCurrentPosition() + moveCounts;
+            newRightTarget = MyRobot.RightMotor.getCurrentPosition() + moveCounts;
+
+            MyRobot.LeftMotor.setTargetPosition(newLeftTarget);
+            MyRobot.RightMotor.setTargetPosition(newRightTarget);
+
+            MyRobot.LeftMotor.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+            MyRobot.RightMotor.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+
+            speed = Range.clip(Math.abs(speed), 0.0, 1.0);
+
+            MyRobot.LeftMotor.setPower(speed);
+            MyRobot.RightMotor.setPower(speed);
+
+            while (opModeIsActive() &&
+                    (MyRobot.LeftMotor.isBusy() && MyRobot.RightMotor.isBusy())) {
+
+                error = getError(angle);
+                steer = getSteer(error, P_Drive_Coeff);
+
+                if (distance < 0)
+                    steer *= -1.0;
+
+                leftSpeed = speed - steer;
+                rightSpeed = speed + steer;
+
+                max = Math.max(Math.abs(leftSpeed), Math.abs(rightSpeed));
+                if (max > 1.0) {
+                    leftSpeed /= max;
+                    rightSpeed /= max;
+
+                }
+
+                MyRobot.LeftMotor.setPower(leftSpeed);
+                MyRobot.RightMotor.setPower(rightSpeed);
+
+                telemetry.addData("Err/St", "%5.1f/%5.1f", error, steer);
+                telemetry.addData("Target", "%7d:%7d", newLeftTarget, newRightTarget);
+                telemetry.addData("Actual", "%7d:%7d", MyRobot.LeftMotor.getCurrentPosition(),
+                        MyRobot.RightMotor.getCurrentPosition());
+                telemetry.addData("Speed", "%5.2f:%5.2f", leftSpeed, rightSpeed);
+                telemetry.update();
+
+            }
+
+            MyRobot.LeftMotor.setPower(0);
+            MyRobot.RightMotor.setPower(0);
+
+            MyRobot.LeftMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+            MyRobot.RightMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+
+        }
+    }
+    /**
+     *  Method to spin on central axis to point in a new direction.
+     *  Move will stop if either of these conditions occur:
+     *  1) Move gets to the heading (angle)
+     *  2) Driver stops the opmode running.
+     *
+     * @param speed Desired speed of turn.
+     * @param angle      Absolute Angle (in Degrees) relative to last gyro reset.
+     *                   0 = fwd. +ve is CCW from fwd. -ve is CW from forward.
+     *                   If a relative angle is required, add/subtract from current heading.
+     */
+    public void gyroTurn(double speed, double angle) {
+
+        while (opModeIsActive() && !onHeading(speed, angle, P_Turn_Coeff)) {
+
+            telemetry.update();
+        }
+    }
+
+    /**
+     *  Method to obtain & hold a heading for a finite amount of time
+     *  Move will stop once the requested time has elapsed
+     *
+     * @param speed      Desired speed of turn.
+     * @param angle      Absolute Angle (in Degrees) relative to last gyro reset.
+     *                   0 = fwd. +ve is CCW from fwd. -ve is CW from forward.
+     *                   If a relative angle is required, add/subtract from current heading.
+     * @param holdTime   Length of time (in seconds) to hold the specified heading.
+     */
+    public void gyroHold(double speed, double angle, double holdTime) {
+
+        ElapsedTime holdTimer = new ElapsedTime();
+
+        holdTimer.reset();
+        while (opModeIsActive() && (holdTimer.time() < holdTime)) {
+
+            onHeading(speed, angle, P_Turn_Coeff);
+            telemetry.update();
+        }
+
+        MyRobot.LeftMotor.setPower(0);
+        MyRobot.RightMotor.setPower(0);
+    }
+
+    /**
+     * Perform one cycle of closed loop heading control.
+     *
+     * @param speed     Desired speed of turn.
+     * @param angle     Absolute Angle (in Degrees) relative to last gyro reset.
+     *                  0 = fwd. +ve is CCW from fwd. -ve is CW from forward.
+     *                  If a relative angle is required, add/subtract from current heading.
+     * @param PCoeff    Proportional Gain coefficient
+     * @return
+     */
+    boolean onHeading(double speed, double angle, double PCoeff) {
+        double error;
+        double steer;
+        boolean onTarget = false;
+        double leftspeed;
+        double rightspeed;
+
+        error = getError(angle);
+
+        if (Math.abs(error) <= Heading_Threshhold) {
+            steer = 0.0;
+            leftspeed = 0.0;
+            rightspeed = 0.0;
+            onTarget = true;
+        } else {
+            steer = getSteer(error, PCoeff);
+            rightspeed = speed * steer;
+            leftspeed = -rightspeed;
+        }
+
+        MyRobot.LeftMotor.setPower(leftspeed);
+        MyRobot.RightMotor.setPower(rightspeed);
+
+        telemetry.addData("Target", "%5.2f", angle);
+        telemetry.addData("Err/St", "%5.2f/%5.2f", error, steer);
+        telemetry.addData("Speed.", "%5.2f:%5.2f", leftspeed, rightspeed);
+
+        return onTarget;
+
+    }
+
+    /**
+     * getError determines the error between the target angle and the robot's current heading
+     * @param   targetAngle  Desired angle (relative to global reference established at last Gyro Reset).
+     * @return  error angle: Degrees in the range +/- 180. Centered on the robot's frame of reference
+     *          +ve error means the robot should turn LEFT (CCW) to reduce error.
+     */
+    public double getError(double targetAngle) {
+
+        double robotError;
+
+        robotError = targetAngle - gyro.getIntegratedZValue();
+        while (robotError > 180) robotError -= 360;
+        while (robotError <= -180) robotError =+ 360;
+        return robotError;
+    }
+
+    /**
+     * returns desired steering force.  +/- 1 range.  +ve = steer left
+     * @param error   Error angle in robot relative degrees
+     * @param PCoeff  Proportional Gain Coefficient
+     * @return
+     */
+    public double getSteer(double error, double PCoeff) {
+        return Range.clip(error * PCoeff, -1, 1);
+    }
+}
