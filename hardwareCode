@@ -1,0 +1,71 @@
+package org.firstinspires.ftc.teamcode;
+
+import com.qualcomm.robotcore.hardware.DcMotor;
+import com.qualcomm.robotcore.hardware.DcMotorSimple;
+import com.qualcomm.robotcore.hardware.HardwareMap;
+import com.qualcomm.robotcore.hardware.Servo;
+import com.qualcomm.robotcore.util.ElapsedTime;
+
+/**
+ * Created by Galaxy on 1/20/2018.
+ */
+
+public class MyHardwareCode {
+
+    /* Public OpMode members. */
+    public DcMotor  LeftMotor   = null;
+    public DcMotor  RightMotor  = null;
+    public DcMotor  LiftMotor   = null;
+    public DcMotor  LiftMotor2  = null;
+    public Servo    RightTooth  = null;
+    public Servo    LeftTooth   = null;
+
+//    public final static double RclawClose = 0.7;
+//    public final static double LclawClose = 0.3;
+//    public final static double RclawOpen = 0.0;
+//    public final static double LclawOpen = 1.0;
+
+    /* local OpMode members. */
+    HardwareMap hwMap           =  null;
+    //private ElapsedTime period  = new ElapsedTime();
+
+    /* Constructor */
+    public MyHardwareCode(){
+
+        //This the class that can be accessed by other classes
+
+    }
+
+    /* Initialize standard Hardware interfaces */
+    public void init(HardwareMap ahwMap) {
+        // Save reference to Hardware map
+        hwMap = ahwMap;
+
+        // Define and Initialize Motors
+        LeftMotor  = hwMap.get(DcMotor.class, "LeftMotor");
+        RightMotor = hwMap.get(DcMotor.class, "RightMotor");
+        LiftMotor  = hwMap.get(DcMotor.class, "LiftMotor");
+        LiftMotor2 = hwMap.get(DcMotor.class, "LiftMotor2");
+
+        RightMotor.setDirection(DcMotor.Direction.FORWARD);
+        LeftMotor.setDirection(DcMotor.Direction.REVERSE); // Set to REVERSE if using AndyMark motors
+        LiftMotor2.setDirection(DcMotor.Direction.REVERSE);// Set to FORWARD if using AndyMark motors
+
+        // Set all motors to zero power
+        LeftMotor.setPower(0);
+        RightMotor.setPower(0);
+        LiftMotor.setPower(0);
+        LiftMotor2.setPower(0);
+
+        // Set all motors to run without encoders.
+        // May want to use RUN_USING_ENCODERS if encoders are installed.
+        LeftMotor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        RightMotor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+
+        // Define and initialize ALL installed servos.
+        LeftTooth  = hwMap.get(Servo.class, "LeftTooth");
+        RightTooth = hwMap.get(Servo.class, "RightTooth");
+        LeftTooth.setPosition(0.0);
+        RightTooth.setPosition(1.0);
+    }
+}
