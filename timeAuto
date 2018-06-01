@@ -1,0 +1,54 @@
+package org.firstinspires.ftc.teamcode;
+
+import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
+import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
+import com.qualcomm.robotcore.hardware.DcMotor;
+import com.qualcomm.robotcore.hardware.HardwareMap;
+import com.qualcomm.robotcore.hardware.Servo;
+
+/**
+ * Created by Galaxy on 1/20/2018.
+ */
+@Autonomous(group = "Default", name = "AutoBaisc")
+public class AutoByTime extends LinearOpMode {
+
+        MyHardwareCode Myrobot = new MyHardwareCode();
+
+        private double cuttentTIme;
+        public double setTime = 2.4;
+
+        @Override
+        public void runOpMode() throws InterruptedException {
+
+            Myrobot.init(hardwareMap);
+
+            waitForStart();
+
+            sleep(10000);
+
+            cuttentTIme = getRuntime();
+
+            while (opModeIsActive() && getRuntime() - cuttentTIme < setTime){
+
+                Myrobot.LeftMotor.setPower(0.35);
+                Myrobot.RightMotor.setPower(0.35);
+
+                sleep(250);
+
+                Myrobot.LeftMotor.setPower(0.35);
+                Myrobot.RightMotor.setPower(-0.35);
+
+                sleep(250);
+
+                Myrobot.LeftMotor.setPower(0.35);
+                Myrobot.RightMotor.setPower(0.35);
+
+            }
+
+            Myrobot.LeftMotor.setPower(0);
+            Myrobot.RightMotor.setPower(0);
+
+        }
+}
+
+
